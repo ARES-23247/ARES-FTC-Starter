@@ -8,6 +8,8 @@ field assets, routines, hardware constants, or calibration values.
 
 1. Open this folder in ARES Analytics.
 2. Set your team, season, and robot name in **Project Identity**.
+   Keep **Standard FTC SDK** for first bring-up. Experimental ARES Photon and the Limelight proxy
+   are explicit reviewed project choices, never enabled merely because a dependency is present.
 3. Review the four motors and IMU in **Drivebase Builder**.
 4. Import or create the season field and AprilTags in **Field Studio**.
 5. Add mechanisms in **Subsystem Builder** and map controls in **Controller Bindings**.
@@ -17,6 +19,10 @@ field assets, routines, hardware constants, or calibration values.
 The initial robot has four required motors named `fl`, `fr`, `rl`, and `rr`, plus the Control Hub IMU
 named `imu`. Wheel encoders and the IMU provide the generic localization path. The tuning profile is
 an uncalibrated simulation baseline, not a claim about a physical robot.
+
+The dashboard Control Hub Health card reports the generated command-path selection and, on real
+hardware, whether Photon actually became active. **Selected** and **active** are intentionally
+different states; a simulator cannot validate the experimental REV Hub interception path.
 
 ```powershell
 # Focused local development against a sibling ARESLib checkout
