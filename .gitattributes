@@ -1,2 +1,3 @@
-gradlew text eol=lf
-*.bat text eol=crlf
+# The ARES generator compares checked-in mechanical Kotlin to deterministic LF output.
+# Keep this file byte-stable on Windows so a fresh checkout passes verifyAresProject.
+/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/generated/GeneratedAresProject.kt text eol=lf
