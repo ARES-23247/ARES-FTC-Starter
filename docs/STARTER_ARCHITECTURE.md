@@ -5,6 +5,11 @@ Canonical `.ares` documents define the robot. Gradle emits mechanical code into
 `TeamCode/src/main` are marked `GENERATED STARTER` and exist only to connect generated project code to
 the FTC SDK OpMode lifecycle.
 
+`.ares/project.json` also owns the FTC runtime policy. Generated constants configure every TeleOp,
+autonomous OpMode, and robot facade consistently before hardware construction. New starters choose
+the standard FTC SDK command path and leave the Limelight HTTP proxy off; Robot Studio can propose a
+reviewed change without adding hand-written marker interfaces or classpath auto-detection.
+
 ```text
 gamepad → generated controller binding → Redux action/state → drive controller
         → cached IO contract → FTC hardware or desktop simulator adapter

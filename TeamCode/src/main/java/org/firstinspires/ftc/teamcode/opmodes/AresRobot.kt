@@ -19,6 +19,7 @@ import com.areslib.util.RobotClock
 import com.qualcomm.robotcore.hardware.HardwareMap
 import org.firstinspires.ftc.robotcore.external.Telemetry
 import org.firstinspires.ftc.teamcode.dsl.FtcAutoCapabilities
+import org.firstinspires.ftc.teamcode.config.AresRuntimePolicy
 import org.firstinspires.ftc.teamcode.generated.drivebase.GeneratedAresFtcMecanumRuntimeConfig
 import org.firstinspires.ftc.teamcode.generated.drivebase.GeneratedAresTuningConfig
 import org.firstinspires.ftc.teamcode.subsystems.GeneratedSubsystemRegistry
@@ -47,7 +48,11 @@ class AresRobot(
     val hardwareMap: HardwareMap,
     val localTelemetry: Telemetry? = null,
 ) {
-    val base: FtcMecanumRobot = GeneratedAresFtcMecanumRuntimeConfig.createRobot(hardwareMap, localTelemetry)
+    val base: FtcMecanumRobot = GeneratedAresFtcMecanumRuntimeConfig.createRobot(
+        hardwareMap,
+        localTelemetry,
+        limelightProxyEnabled = AresRuntimePolicy.options.limelightProxyEnabled,
+    )
     private val typedTuningRuntime = GeneratedAresTuningConfig.createRuntime()
     private var fatalFrameFailure: Throwable? = null
     private var closed = false

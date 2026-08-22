@@ -5,9 +5,11 @@ package org.firstinspires.ftc.teamcode.dsl
 import com.areslib.ftc.dsl.FtcTeleOpBase
 import com.areslib.ftc.dsl.FtcTeleOpBuilder
 import com.areslib.ftc.input.FtcInputFrameAdapter
-import com.areslib.ftc.photon.PhotonEnabledOpMode
+import com.areslib.ftc.photon.AresFtcRuntimeOptions
+import com.areslib.ftc.photon.AresFtcRuntimeOptionsProvider
 import com.areslib.input.InputFrame
 import com.areslib.telemetry.GamepadState
+import org.firstinspires.ftc.teamcode.config.AresRuntimePolicy
 import org.firstinspires.ftc.teamcode.opmodes.AresRobot
 
 /**
@@ -15,7 +17,10 @@ import org.firstinspires.ftc.teamcode.opmodes.AresRobot
  * The shared base snapshots gamepads, invokes callbacks, runs [AresRobot.update], and
  * guarantees [AresRobot.close] on exit.
  */
-abstract class AresTeleOpBase : FtcTeleOpBase<AresRobot>(), PhotonEnabledOpMode {
+abstract class AresTeleOpBase : FtcTeleOpBase<AresRobot>(), AresFtcRuntimeOptionsProvider {
+    final override val aresFtcRuntimeOptions: AresFtcRuntimeOptions
+        get() = AresRuntimePolicy.options
+
     private val driverFrame = InputFrame()
     private val operatorFrame = InputFrame()
     private var driverAdapter: FtcInputFrameAdapter? = null
