@@ -22,6 +22,7 @@ import com.areslib.sequencer.ParallelDeadlineGroup
 import com.areslib.sequencer.SequentialTaskGroup
 import com.areslib.sequencer.Task
 import com.areslib.sequencer.TaskExecutor
+import com.areslib.sequencer.TaskResources
 import com.areslib.sequencer.TaskStateMachine
 import com.areslib.sequencer.TaskStatus
 import com.areslib.sequencer.TimeWaitTask
@@ -30,6 +31,7 @@ import com.areslib.util.RobotClock
 import org.firstinspires.ftc.teamcode.generated.GeneratedAresProject
 import org.firstinspires.ftc.teamcode.generated.GeneratedAresProjectCapabilities
 import org.firstinspires.ftc.teamcode.generated.GeneratedAresProjectControlTaskSink
+import org.firstinspires.ftc.teamcode.generated.drivebase.GeneratedAresDrivebaseConfig
 import org.firstinspires.ftc.teamcode.opmodes.AresRobot
 import kotlin.math.hypot
 
@@ -40,6 +42,7 @@ internal class FtcGeneratedProjectRuntime(
     private val selectedAlliance: com.areslib.state.Alliance = robot.base.store.state.drive.alliance,
 ) : GeneratedAresProjectCapabilities, GeneratedAresProjectControlTaskSink {
     private val directTaskExecutor = TaskExecutor()
+    private val driveAssists = FtcDriveAssistModes()
 
     val routineManager = RoutineManager(
         bindings = GeneratedAresProject.runtimeBindings(this),
@@ -83,7 +86,14 @@ internal class FtcGeneratedProjectRuntime(
      * never alliance-mirrored (AGENTS.md §5).
      */
     /** Heading-lock state for scheme-authored drive; OpModes toggle this at runtime. */
-    @Volatile var headingLockEnabled: Boolean = true
+    var headingLockEnabled: Boolean
+        get() = driveAssists.headingLockEnabled
+        set(value) { driveAssists.headingLockEnabled = value }
+
+    /** EKF position hold resists displacement only while pose feedback is fresh and valid. */
+    var positionHoldEnabled: Boolean
+        get() = driveAssists.positionHoldEnabled
+        set(value) { driveAssists.positionHoldEnabled = value }
 
     override fun onDriveCommand(vx: Double, vy: Double, omega: Double, active: Boolean) {
         if (!active) return
@@ -93,11 +103,18 @@ internal class FtcGeneratedProjectRuntime(
         // Blue mirrors both field-relative translation axes inline; rotation is never
         // alliance-mirrored. Kept inline (no Pair allocation) per the zero-GC loop contract.
         val mirror = if (robot.base.store.state.drive.alliance == com.areslib.state.Alliance.BLUE) -1.0 else 1.0
+        val state = robot.base.store.state
+        val positionHoldAllowed = driveAssists.positionHoldAllowed(
+            state = state,
+            nowMs = RobotClock.currentTimeMillis(),
+            staleFeedbackTimeoutMs = GeneratedAresDrivebaseConfig.STALE_FEEDBACK_TIMEOUT_MS,
+        )
         robot.base.mecanumDrive.driveFieldRelativeNormalized(
             mirror * boundedVx,
             mirror * boundedVy,
             boundedOmega,
             headingLockEnabled,
+            positionHoldAllowed,
         )
     }
 
@@ -149,12 +166,53 @@ internal class FtcGeneratedProjectRuntime(
         require(arguments.isEmpty()) {
             "FTC named action '$actionKey' does not accept arguments; use a generated subsystem capability"
         }
-        return NamedCommands.create(CommandKey(actionKey), RobotClock.currentTimeMillis())
+        return when (actionKey) {
+            "drivetrain.headingLock.enable" -> driveAssistTask("Enable heading lock") { headingLockEnabled = true }
+            "drivetrain.headingLock.disable" -> driveAssistTask("Disable heading lock") { headingLockEnabled = false }
+            "drivetrain.headingLock.toggle" -> driveAssistTask("Toggle heading lock") { headingLockEnabled = !headingLockEnabled }
+            "drivetrain.positionHold.enable" -> driveAssistTask("Enable anti-push position hold") { positionHoldEnabled = true }
+            "drivetrain.positionHold.disable" -> driveAssistTask("Disable anti-push position hold") { positionHoldEnabled = false }
+            "drivetrain.positionHold.toggle" -> driveAssistTask("Toggle anti-push position hold") { positionHoldEnabled = !positionHoldEnabled }
+            else -> NamedCommands.create(CommandKey(actionKey), RobotClock.currentTimeMillis())
+        }
+    }
+
+    private fun driveAssistTask(name: String, update: () -> Unit): Task = object : Task {
+        override val name: String = name
+        override val requiredResources: Long = TaskResources.DRIVE
+        private var applied = false
+
+        override fun initialize(state: RobotState): List<RobotAction> {
+            super.initialize(state)
+            update()
+            applied = true
+            return emptyList()
+        }
+
+        override fun isCompleted(state: RobotState, elapsedMs: Long): Boolean = applied
+
+        override fun releaseRuntimeState() {
+            applied = false
+            super.releaseRuntimeState()
+        }
     }
 
     private companion object {
         const val DRIVER_PORT: Int = 0
         const val OPERATOR_PORT: Int = 1
+    }
+}
+
+/** Mutable runtime policy owned by one OpMode; generated Redux state remains immutable. */
+internal class FtcDriveAssistModes {
+    @Volatile var headingLockEnabled: Boolean = true
+    @Volatile var positionHoldEnabled: Boolean = false
+
+    fun positionHoldAllowed(state: RobotState, nowMs: Long, staleFeedbackTimeoutMs: Long): Boolean {
+        if (!positionHoldEnabled || !state.drive.measuredMotionValid) return false
+        val observationMs = state.drive.poseEstimator.lastObservationTimestampMs
+        if (observationMs < 0L || nowMs < observationMs) return false
+        return nowMs - observationMs <= staleFeedbackTimeoutMs
     }
 }
 
