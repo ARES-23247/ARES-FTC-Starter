@@ -20,6 +20,13 @@ The initial robot has four required motors named `fl`, `fr`, `rl`, and `rr`, plu
 named `imu`. Wheel encoders and the IMU provide the generic localization path. The tuning profile is
 an uncalibrated simulation baseline, not a claim about a physical robot.
 
+Normal driving starts in closed-loop chassis-velocity mode. All-zero custom motor PIDF values mean
+“retain the FTC SDK motor-type defaults”; measured overrides, feedforward, rotation-lock gains, and
+anti-push position-hold gains live in the reviewed Tuning profile. Rotation lock starts enabled.
+Anti-push starts disabled and fails closed whenever pose feedback is stale or invalid. In **TeleOp
+Controls**, choose the **Drive assists** category to bind explicit Enable, Disable, or Toggle actions
+for either feature—no Kotlin edit is required.
+
 The dashboard Control Hub Health card reports the generated command-path selection and, on real
 hardware, whether Photon actually became active. **Selected** and **active** are intentionally
 different states; a simulator cannot validate the experimental REV Hub interception path.

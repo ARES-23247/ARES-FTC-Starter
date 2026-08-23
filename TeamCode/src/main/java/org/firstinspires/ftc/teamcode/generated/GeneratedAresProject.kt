@@ -63,9 +63,9 @@ fun interface GeneratedAresProjectControlTaskSink {
 /** Generated from the project's checked-in ARES documents. Do not edit by hand. */
 object GeneratedAresProject {
     const val GENERATOR_VERSION: Int = 8
-    const val CATALOG_SHA256: String = "cc3394dfc6e251b01bc09ade83af2df2c8f976257e2b2b95090b57e69e2f14e3"
-    const val CONTENT_SHA256: String = "42e0dc9e51012e7f3e5ad72756960e4a12f3ae08a082526ad730c7b19196a4b6"
-    const val SOURCE_SHA256: String = "675a8a538ab346ceb22ecd3e5e2f06b245d69fa4dd5007465ce92193e80059cc"
+    const val CATALOG_SHA256: String = "b8ec83088f31b08338640767d4d2889a9331e402fa9ae2a17f30994308d2b934"
+    const val CONTENT_SHA256: String = "d8f9f73ef44d7c107293add8624d9fcaf9c19b2abad95a02c7f82e30053fc0ec"
+    const val SOURCE_SHA256: String = "24f990e219de1d462b11407efc83e81698fe83408f1cba496354179e1c3f8c5e"
 
     const val PROJECT_ID: String = "ares-ftc-starter"
     const val PROJECT_LEAGUE: String = "FTC"
@@ -81,7 +81,7 @@ object GeneratedAresProject {
         const val FTC_LIMELIGHT_PROXY_ENABLED: Boolean = false
     }
 
-    val knownActionKeys: Set<String> = setOf("drivetrain.recoverNeutral")
+    val knownActionKeys: Set<String> = setOf("drivetrain.headingLock.disable", "drivetrain.headingLock.enable", "drivetrain.headingLock.toggle", "drivetrain.positionHold.disable", "drivetrain.positionHold.enable", "drivetrain.positionHold.toggle", "drivetrain.recoverNeutral")
     val knownConditionKeys: Set<String> = emptySet()
 
     val routines: Map<String, RoutineDocument> = linkedMapOf()
@@ -93,6 +93,54 @@ object GeneratedAresProject {
         RoutineRuntimeBindings(
             createActionTask = { key, arguments ->
                 when (key) {
+                    "drivetrain.headingLock.disable" -> {
+                        CapabilityArgumentReader(
+                            capabilityKey = "drivetrain.headingLock.disable",
+                            arguments = arguments,
+                            allowedKeys = emptySet(),
+                        )
+                        registry.createActionTask(key, arguments)
+                    }
+                    "drivetrain.headingLock.enable" -> {
+                        CapabilityArgumentReader(
+                            capabilityKey = "drivetrain.headingLock.enable",
+                            arguments = arguments,
+                            allowedKeys = emptySet(),
+                        )
+                        registry.createActionTask(key, arguments)
+                    }
+                    "drivetrain.headingLock.toggle" -> {
+                        CapabilityArgumentReader(
+                            capabilityKey = "drivetrain.headingLock.toggle",
+                            arguments = arguments,
+                            allowedKeys = emptySet(),
+                        )
+                        registry.createActionTask(key, arguments)
+                    }
+                    "drivetrain.positionHold.disable" -> {
+                        CapabilityArgumentReader(
+                            capabilityKey = "drivetrain.positionHold.disable",
+                            arguments = arguments,
+                            allowedKeys = emptySet(),
+                        )
+                        registry.createActionTask(key, arguments)
+                    }
+                    "drivetrain.positionHold.enable" -> {
+                        CapabilityArgumentReader(
+                            capabilityKey = "drivetrain.positionHold.enable",
+                            arguments = arguments,
+                            allowedKeys = emptySet(),
+                        )
+                        registry.createActionTask(key, arguments)
+                    }
+                    "drivetrain.positionHold.toggle" -> {
+                        CapabilityArgumentReader(
+                            capabilityKey = "drivetrain.positionHold.toggle",
+                            arguments = arguments,
+                            allowedKeys = emptySet(),
+                        )
+                        registry.createActionTask(key, arguments)
+                    }
                     "drivetrain.recoverNeutral" -> {
                         CapabilityArgumentReader(
                             capabilityKey = "drivetrain.recoverNeutral",
@@ -110,6 +158,12 @@ object GeneratedAresProject {
             isConditionKnown = knownConditionKeys::contains,
             resourcesForAction = { key ->
                 when (key) {
+                    "drivetrain.headingLock.disable" -> setOf("drivetrain")
+                    "drivetrain.headingLock.enable" -> setOf("drivetrain")
+                    "drivetrain.headingLock.toggle" -> setOf("drivetrain")
+                    "drivetrain.positionHold.disable" -> setOf("drivetrain")
+                    "drivetrain.positionHold.enable" -> setOf("drivetrain")
+                    "drivetrain.positionHold.toggle" -> setOf("drivetrain")
                     "drivetrain.recoverNeutral" -> setOf("drivetrain")
                     else -> emptySet()
                 }
