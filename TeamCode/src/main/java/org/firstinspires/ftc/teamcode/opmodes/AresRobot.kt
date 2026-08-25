@@ -15,6 +15,8 @@ import com.areslib.state.aprilTagPoseMap
 import com.areslib.subsystem.Subsystem
 import com.areslib.tuning.TuningApplyContext
 import com.areslib.tuning.TuningManager
+import com.areslib.tuning.TuningValue
+import com.areslib.tuning.TypedTuningConsumer
 import com.areslib.util.RobotClock
 import com.qualcomm.robotcore.hardware.HardwareMap
 import org.firstinspires.ftc.robotcore.external.Telemetry
@@ -54,6 +56,7 @@ class AresRobot(
         limelightProxyEnabled = AresRuntimePolicy.options.limelightProxyEnabled,
     )
     private val typedTuningRuntime = GeneratedAresTuningConfig.createRuntime()
+    private val tuningConsumers = ArrayList<TypedTuningConsumer>()
     private var fatalFrameFailure: Throwable? = null
     private var closed = false
 
@@ -67,7 +70,7 @@ class AresRobot(
     init {
         val projectRoot = if (FtcBaseRobot.isAndroid) Paths.get("/sdcard/FIRST")
             else Paths.get("").toAbsolutePath().normalize()
-        base.tuningManager = TuningManager(
+        val tuningManager = TuningManager(
             runtime = typedTuningRuntime,
             telemetry = base.telemetryManager.dataLoggingTelemetry,
             contextProvider = {
@@ -75,11 +78,11 @@ class AresRobot(
                     sessionArmed = base.isCalibrationModeArmed,
                     robotDisabled = false,
                     calibrationParameterUids = emptySet(),
+                    outputsNeutralAndInhibited = base.isCalibrationNeutralOutputHoldActive,
                 )
             },
-            onApplied = { parameterUid, _ ->
-                if (!GeneratedAresFtcMecanumRuntimeConfig.supportsRuntimeParameter(parameterUid)) false
-                else {
+            onApplied = { parameterUid, value ->
+                if (GeneratedAresFtcMecanumRuntimeConfig.supportsRuntimeParameter(parameterUid)) {
                     base.store.dispatch(
                         RobotAction.UpdateTuningState(
                             GeneratedAresFtcMecanumRuntimeConfig.withRuntimeValues(
@@ -89,11 +92,13 @@ class AresRobot(
                         )
                     )
                     true
-                }
+                } else applySubsystemTuning(parameterUid, value)
             },
+            isConsumerSupported = ::supportsRuntimeParameter,
             localProjectRoot = projectRoot,
             localOverlayFile = projectRoot.resolve(".ares/local/tuning/runtime.arestuning"),
         )
+        base.tuningManager = tuningManager
 
         val fieldBytes = runCatching {
             hardwareMap.appContext.assets.open("paths/field.json").use { it.readBytes() }
@@ -115,9 +120,15 @@ class AresRobot(
 
         NamedCommands.clear()
         try {
-            installGeneratedSubsystems(hardwareMap, base::registerSubsystem)
+            installGeneratedSubsystems(hardwareMap, base::registerSubsystem).forEach { subsystem ->
+                if (subsystem is TypedTuningConsumer) {
+                    tuningConsumers += subsystem
+                    applyCanonicalValues(subsystem)
+                }
+            }
             installGeneratedSuperstructures(base::registerSubsystem)
             FtcAutoCapabilities.registerDriveRecovery(base::recoverDriveOutputWithNeutral)
+            tuningManager.publishMetadataAndValues()
         } catch (failure: Throwable) {
             runCatching { base.close() }.exceptionOrNull()?.let(failure::addSuppressed)
             throw failure
@@ -126,6 +137,35 @@ class AresRobot(
 
     fun addTelemetry(key: String, value: Any) {
         localTelemetry?.addData(key, value)
+    }
+
+    private fun supportsRuntimeParameter(parameterUid: String): Boolean {
+        if (GeneratedAresFtcMecanumRuntimeConfig.supportsRuntimeParameter(parameterUid)) return true
+        var matches = 0
+        for (index in tuningConsumers.indices) {
+            if (tuningConsumers[index].supportsTuningParameter(parameterUid)) matches += 1
+        }
+        return matches == 1
+    }
+
+    private fun applySubsystemTuning(parameterUid: String, value: TuningValue): Boolean {
+        var matchIndex = -1
+        for (index in tuningConsumers.indices) {
+            if (!tuningConsumers[index].supportsTuningParameter(parameterUid)) continue
+            if (matchIndex >= 0) return false
+            matchIndex = index
+        }
+        return matchIndex >= 0 && tuningConsumers[matchIndex].applyTuningParameter(parameterUid, value)
+    }
+
+    private fun applyCanonicalValues(consumer: TypedTuningConsumer) {
+        typedTuningRuntime.metadata.declarations.forEach { declaration ->
+            if (consumer.supportsTuningParameter(declaration.uid)) {
+                check(consumer.applyTuningParameter(declaration.uid, requireNotNull(typedTuningRuntime.value(declaration.uid)))) {
+                    "Generated subsystem rejected canonical tuning parameter '${declaration.uid}'"
+                }
+            }
+        }
     }
 
     @JvmOverloads
