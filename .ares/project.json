@@ -1,6 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "projectId": "ares-ftc-starter",
+  "identity": {
+    "teamId": "00000",
+    "seasonId": "starter",
+    "robotId": "AresFtcStarter",
+    "displayName": "ARES FTC Starter"
+  },
   "league": "FTC",
   "coordinateConvention": "CENTER_ORIGIN_CCW",
   "robotLengthMeters": 0.45,
