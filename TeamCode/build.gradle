@@ -205,7 +205,7 @@ configurations.configureEach { configuration ->
 // packaging exclusions above remain unchanged for every Android/runtime configuration.
 
 def generatedAresSource = file(
-    "src/main/java/org/firstinspires/ftc/teamcode/generated/GeneratedAresProject.kt"
+    "${generatedAresSubsystemMainDir}/org/firstinspires/ftc/teamcode/generated/GeneratedAresProject.kt"
 )
 def subsystemStarterSource = file(
     "src/main/java/org/firstinspires/ftc/teamcode/subsystems"
@@ -226,7 +226,7 @@ def drivebaseCodegenArgs = [
 ]
 tasks.register("generateAresProject", JavaExec) {
     group = "ARES"
-    description = "Generate checked-in project Kotlin and disposable subsystem plumbing; never replace starters."
+    description = "Generate disposable project Kotlin, subsystem plumbing, and contract tests; never replace starters."
     classpath = configurations.aresCodegen
     mainClass = "com.areslib.codegen.AresProjectCodegenCli"
     args "--project", rootProject.projectDir.absolutePath,
@@ -239,14 +239,13 @@ tasks.register("generateAresProject", JavaExec) {
 
 tasks.register("prepareAresSubsystemPlumbing", JavaExec) {
     group = "build setup"
-    description = "Materialize disposable subsystem registration/tests without modifying editable starters."
+    description = "Materialize all disposable project/runtime plumbing and tests without modifying editable starters."
     classpath = configurations.aresCodegen
     mainClass = "com.areslib.codegen.AresProjectCodegenCli"
     args "--project", rootProject.projectDir.absolutePath,
         "--output", generatedAresSource.absolutePath,
         "--package", "org.firstinspires.ftc.teamcode.generated",
-        "--platform", "FTC",
-        "--subsystems-only"
+        "--platform", "FTC"
     args subsystemCodegenArgs
     args drivebaseCodegenArgs
 }
@@ -308,7 +307,7 @@ tasks.register("replaceSubsystemStarters", JavaExec) {
 
 tasks.register("verifyAresProject", JavaExec) {
     group = "verification"
-    description = "Fail when checked-in project Kotlin, starters, or generated subsystem plumbing is stale."
+    description = "Fail when canonical documents, starters, or disposable generated plumbing are stale."
     dependsOn tasks.named("prepareAresSubsystemPlumbing")
     classpath = configurations.aresCodegen
     mainClass = "com.areslib.codegen.AresProjectCodegenCli"
