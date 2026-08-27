@@ -21,16 +21,17 @@ import com.areslib.sequencer.FollowPathTask
 import com.areslib.sequencer.ParallelDeadlineGroup
 import com.areslib.sequencer.SequentialTaskGroup
 import com.areslib.sequencer.Task
-import com.areslib.sequencer.TaskExecutor
 import com.areslib.sequencer.TaskResources
 import com.areslib.sequencer.TaskStateMachine
 import com.areslib.sequencer.TaskStatus
 import com.areslib.sequencer.TimeWaitTask
 import com.areslib.state.RobotState
 import com.areslib.util.RobotClock
+import com.areslib.runtime.GeneratedProjectControlRuntime
+import com.areslib.ftc.runtime.FtcGeneratedAutonomousRuntime
+import com.areslib.ftc.runtime.resolveFtcAutonomousPose
 import org.firstinspires.ftc.teamcode.generated.GeneratedAresProject
 import org.firstinspires.ftc.teamcode.generated.GeneratedAresProjectCapabilities
-import org.firstinspires.ftc.teamcode.generated.GeneratedAresProjectControlTaskSink
 import org.firstinspires.ftc.teamcode.generated.drivebase.GeneratedAresDrivebaseConfig
 import org.firstinspires.ftc.teamcode.opmodes.AresRobot
 import kotlin.math.hypot
@@ -40,31 +41,22 @@ internal class FtcGeneratedProjectRuntime(
     private val robot: AresRobot,
     private val autonomousEntry: AutonomousCatalogEntry? = null,
     private val selectedAlliance: com.areslib.state.Alliance = robot.base.store.state.drive.alliance,
-) : GeneratedAresProjectCapabilities, GeneratedAresProjectControlTaskSink {
-    private val directTaskExecutor = TaskExecutor()
+) : GeneratedAresProjectCapabilities, FtcGeneratedAutonomousRuntime {
     private val driveAssists = FtcDriveAssistModes()
-
-    val routineManager = RoutineManager(
-        bindings = GeneratedAresProject.runtimeBindings(this),
+    private val controlRuntime = GeneratedProjectControlRuntime(
+        definition = GeneratedAresProject.runtimeDefinition,
         stateProvider = { robot.base.store.state },
         dispatch = robot.base.store::dispatch,
-    ).also { manager ->
-        manager.replaceDocuments(GeneratedAresProject.routines.values)
-    }
-    private val controllerRuntimesByPort = GeneratedAresProject.createControllerRuntimes(
-        schemeId = GeneratedAresProject.DEFAULT_CONTROL_SCHEME_ID,
-        registry = this,
-        routineManager = routineManager,
-        taskSink = this,
-    ).also { runtimes ->
-        require(runtimes.keys.all { it == DRIVER_PORT || it == OPERATOR_PORT }) {
-            "FTC generated controls may use only Driver Station ports 0 and 1"
-        }
-    }
+        capabilities = this,
+        maximumControllerPorts = FTC_CONTROLLER_PORTS,
+    )
+
+    override val routineManager: RoutineManager
+        get() = controlRuntime.routineManager
 
     /** True when the checked-in scheme binds drivetrain axes, replacing hand-written gamepad drive. */
     val hasGeneratedDriveBindings: Boolean
-        get() = GeneratedAresProject.HAS_GENERATED_DRIVE_BINDINGS
+        get() = controlRuntime.hasGeneratedDriveBindings
 
     /** Samples the two FTC Driver Station ports through reusable frames, then runs submitted tasks. */
     fun updateControls(
@@ -73,9 +65,9 @@ internal class FtcGeneratedProjectRuntime(
         nowNanos: Long,
         emitDriveCommand: Boolean = true,
     ) {
-        controllerRuntimesByPort[DRIVER_PORT]?.update(driverFrame, nowNanos)
-        controllerRuntimesByPort[OPERATOR_PORT]?.update(operatorFrame, nowNanos)
-        if (emitDriveCommand) GeneratedAresProject.emitDriveCommand(this)
+        controlRuntime.updatePort(DRIVER_PORT, driverFrame, nowNanos)
+        controlRuntime.updatePort(OPERATOR_PORT, operatorFrame, nowNanos)
+        if (emitDriveCommand) controlRuntime.emitDriveCommand()
         updateTasks()
     }
 
@@ -118,33 +110,14 @@ internal class FtcGeneratedProjectRuntime(
         )
     }
 
-    override fun submit(bindingId: String, task: Task) {
-        require(bindingId.isNotBlank()) { "Generated FTC binding ID must not be blank" }
-        directTaskExecutor.addTask(task)
-    }
-
     /** Runs generated routine tasks and controller-submitted one-shot tasks once per robot frame. */
-    fun updateTasks() {
-        if (directTaskExecutor.size > 0) {
-            val state = robot.base.store.state
-            val actions = directTaskExecutor.update(state, RobotClock.currentTimeMillis())
-            for (index in actions.indices) robot.base.store.dispatch(actions[index])
-        }
-        if (routineManager.activeCount > 0 || routineManager.queuedCount > 0) routineManager.update()
-    }
+    override fun updateTasks() = controlRuntime.updateTasks()
 
     /** Disable/stop safety hook. Cleanup actions are dispatched before lifecycle cancellation. */
-    fun cancelAll(reason: String) {
-        controllerRuntimesByPort.values.forEach { it.cancel() }
-        val actions = directTaskExecutor.cancelAll(robot.base.store.state)
-        for (index in actions.indices) robot.base.store.dispatch(actions[index])
-        routineManager.cancelAll(reason)
-    }
+    override fun cancelAll(reason: String) = controlRuntime.cancelAll(reason)
 
     val controlsSource: String
-        get() = GeneratedAresProject.DEFAULT_CONTROL_SCHEME_ID?.let { scheme ->
-            "generated:$scheme:${GeneratedAresProject.CONTENT_SHA256}"
-        } ?: "hand-authored-only"
+        get() = controlRuntime.controlsSource
 
     override fun createDriveTask(step: RoutineDriveStep): Task {
         requireFtcDriveActionsAvailable(step)
@@ -200,6 +173,7 @@ internal class FtcGeneratedProjectRuntime(
     private companion object {
         const val DRIVER_PORT: Int = 0
         const val OPERATOR_PORT: Int = 1
+        const val FTC_CONTROLLER_PORTS: Int = 2
     }
 }
 
