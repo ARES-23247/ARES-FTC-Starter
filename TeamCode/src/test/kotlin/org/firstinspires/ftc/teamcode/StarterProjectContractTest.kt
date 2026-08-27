@@ -4,7 +4,9 @@ package org.firstinspires.ftc.teamcode
 import org.firstinspires.ftc.teamcode.generated.GeneratedAresProject
 import org.firstinspires.ftc.teamcode.generated.drivebase.GeneratedAresDrivebaseConfig
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
+import java.io.File
 
 class StarterProjectContractTest {
     @Test
@@ -28,5 +30,27 @@ class StarterProjectContractTest {
                 setOf("WHEEL_ENCODERS_IMU", "PINPOINT"),
         )
         assertTrue(GeneratedAresDrivebaseConfig.Localization.PRIMARY_ODOMETRY.COMPONENT_UIDS.isNotEmpty())
+    }
+
+    @Test
+    fun starterKeepsOnlyAThinFtcAdapterAndNoCheckedInMechanicalOutput() {
+        val workingDirectory = requireNotNull(System.getProperty("user.dir"))
+        val root = generateSequence(File(workingDirectory).canonicalFile, File::getParentFile)
+            .first { File(it, "TeamCode").isDirectory && File(it, ".ares/project.json").isFile }
+        val runtime = File(
+            root,
+            "TeamCode/src/main/java/org/firstinspires/ftc/teamcode/dsl/FtcGeneratedProjectRuntime.kt",
+        ).readText()
+
+        assertTrue(runtime.contains("GeneratedProjectControlRuntime"))
+        assertTrue(runtime.contains("GeneratedAresProject.runtimeDefinition"))
+        assertFalse(runtime.contains("private val directTaskExecutor"))
+        val autoHost = File(
+            root,
+            "TeamCode/src/main/java/org/firstinspires/ftc/teamcode/dsl/AresAutoDSL.kt",
+        ).readText()
+        assertTrue(autoHost.contains("FtcGeneratedAutonomousOpMode"))
+        assertFalse(autoHost.contains("override fun loop()"))
+        assertFalse(File(root, "TeamCode/src/main/java/org/firstinspires/ftc/teamcode/generated").exists())
     }
 }
