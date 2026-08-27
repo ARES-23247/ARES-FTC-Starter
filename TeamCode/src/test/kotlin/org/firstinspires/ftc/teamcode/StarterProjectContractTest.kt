@@ -53,4 +53,17 @@ class StarterProjectContractTest {
         assertFalse(autoHost.contains("override fun loop()"))
         assertFalse(File(root, "TeamCode/src/main/java/org/firstinspires/ftc/teamcode/generated").exists())
     }
+
+    @Test
+    fun ftcStarterSimulatorDoesNotImportFrcLifecycleOrVendorApis() {
+        val workingDirectory = requireNotNull(System.getProperty("user.dir"))
+        val root = generateSequence(File(workingDirectory).canonicalFile, File::getParentFile)
+            .first { File(it, "TeamCode").isDirectory && File(it, ".ares/project.json").isFile }
+        val sources = File(root, "simulator/src/main").walkTopDown()
+            .filter { it.isFile && it.extension in setOf("kt", "java") }
+            .joinToString("\n") { it.readText() }
+
+        assertFalse(sources.contains("import edu.wpi.first.wpilibj.TimedRobot"))
+        assertFalse(sources.contains("import com.ctre.phoenix"))
+    }
 }
